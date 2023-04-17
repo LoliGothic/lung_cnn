@@ -1,0 +1,11 @@
+version: '3.9'
+
+services:
+  pytorch:
+    container_name: miyoshi_lung_cnn
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    tty: true
+    volumes:
+      - ./:/src/app
