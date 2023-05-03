@@ -86,24 +86,24 @@ def test(model, dataloader, criterion, device):
 
     accuracy = correct / total
     try:
-      precision = true_positives / (true_positives + false_positives)
+        precision = true_positives / (true_positives + false_positives)
     except ZeroDivisionError:
-      precision = 0
+        precision = 0
     
     try:
-      recall = true_positives / (true_positives + false_negatives)
+        recall = true_positives / (true_positives + false_negatives)
     except ZeroDivisionError:
-      recall = 0
+        recall = 0
 
     try:
-      specificity = true_negatives / (true_negatives + false_positives)
+        specificity = true_negatives / (true_negatives + false_positives)
     except ZeroDivisionError:
-       specificity = 0
+        specificity = 0
     
     try:
-      f1_score = 2 * (precision * recall) / (precision + recall)
+        f1_score = 2 * (precision * recall) / (precision + recall)
     except ZeroDivisionError:
-      f1_score = 0
+        f1_score = 0
 
     return running_loss / len(dataloader), accuracy, precision, recall, specificity, f1_score
 
@@ -119,15 +119,15 @@ data = []  # depth違くても学習できるっぽい
 tes_yugen = np.load("./yugen.npy")
 tes_soryu = np.load("./soryu.npy")
 for i in range(10):
-  data.append(tes_yugen)
-  data.append(tes_soryu)
+    data.append(tes_yugen)
+    data.append(tes_soryu)
 # PyTorchのクラス内ではtorch.float型が前提
 data = torch.tensor(data).float()
 
 targets = []
 for i in range(10):
-  targets.append(1)
-  targets.append(0)
+    targets.append(1)
+    targets.append(0)
 # 正解ラベルはtorch.long型
 targets = torch.tensor(targets).long()
 
