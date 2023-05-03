@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
+import numpy as np
 import torch.optim as optim
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 
 # データセットを定義する
 class MyDataset(torch.utils.data.Dataset):
@@ -28,15 +29,15 @@ class MyModel(nn.Module):
         self.pool2 = nn.MaxPool3d(kernel_size=2)
         self.conv3 = nn.Conv3d(32, 64, kernel_size=3, padding=1)
         self.pool3 = nn.MaxPool3d(kernel_size=2)
-        self.fc1 = nn.Linear(64*4*4*4, 256)
-        self.fc2 = nn.Linear(256, 2)
+        self.fc1 = nn.Linear(256*29*9, 256)  # nn.Linear（入力サイズ,出力サイズ）割り切れる値に変えてみた(poolingで出てきた値)
+        self.fc2 = nn.Linear(256, 2)  # 2値分類だから最後は2
 
     # モデルの順伝播を定義する
     def forward(self, x):
         x = self.pool1(torch.relu(self.conv1(x)))
         x = self.pool2(torch.relu(self.conv2(x)))
         x = self.pool3(torch.relu(self.conv3(x)))
-        x = x.view(-1, 64*4*4*4)
+        x = x.view(-1, 256*29*9)  # 割り切れる値に変えてみた(poolingで出てきた値)
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x
@@ -49,6 +50,8 @@ def train(model, dataloader, optimizer, criterion, device):
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
         outputs = model(inputs)
+        # print(outputs)
+        # print(labels)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -82,26 +85,56 @@ def test(model, dataloader, criterion, device):
             false_negatives += ((predicted == 0) & (labels == 1)).sum().item()
 
     accuracy = correct / total
-    precision = true_positives / (true_positives + false_positives)
-    recall = true_positives / (true_positives + false_negatives)
-    specificity = true_negatives / (true_negatives + false_positives)
-    f1_score = 2 * (precision * recall) / (precision + recall)
+    try:
+      precision = true_positives / (true_positives + false_positives)
+    except ZeroDivisionError:
+      precision = 0
+    
+    try:
+      recall = true_positives / (true_positives + false_negatives)
+    except ZeroDivisionError:
+      recall = 0
+
+    try:
+      specificity = true_negatives / (true_negatives + false_positives)
+    except ZeroDivisionError:
+       specificity = 0
+    
+    try:
+      f1_score = 2 * (precision * recall) / (precision + recall)
+    except ZeroDivisionError:
+      f1_score = 0
 
     return running_loss / len(dataloader), accuracy, precision, recall, specificity, f1_score
 
 # パラメータを設定する
 learning_rate = 0.001
-batch_size = 32
+batch_size = 2 #適当に変えた所
 num_epochs = 10
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"device: {device}")
 
 # データセットを作成する
-data = ... # Load voxel data
-targets = ... # Load class labels
+data = []  # depth違くても学習できるっぽい
+tes_yugen = np.load("./yugen.npy")
+tes_soryu = np.load("./soryu.npy")
+for i in range(10):
+  data.append(tes_yugen)
+  data.append(tes_soryu)
+# PyTorchのクラス内ではtorch.float型が前提
+data = torch.tensor(data).float()
+
+targets = []
+for i in range(10):
+  targets.append(1)
+  targets.append(0)
+# 正解ラベルはtorch.long型
+targets = torch.tensor(targets).long()
+
 dataset = MyDataset(data, targets)
 
 # トレーニングセットとテストセットに分割する
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [len(dataset)-100, 100])
+train_dataset, test_dataset = torch.utils.data.random_split(dataset, [len(dataset)-2, 2])
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
@@ -110,21 +143,24 @@ model = MyModel().to(device)
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 criterion = nn.CrossEntropyLoss()
 
-# TensorBoardを設定する
-writer = SummaryWriter()
+# グラフを書くためのx座標とy座標
+x_coordinate = []
+y_coordinate = []
 
 # トレーニングを実行する
 for epoch in range(num_epochs):
     train_loss = train(model, train_dataloader, optimizer, criterion, device)
     test_loss, test_accuracy, test_precision, test_recall, test_specificity, test_f1_score = test(model, test_dataloader, criterion, device)
 
-    # TensorBoardにlossとaccuracyのログを出す
-    writer.add_scalar("Training Loss", train_loss, epoch)
-    writer.add_scalar("Testing Loss", test_loss, epoch)
-    writer.add_scalar("Testing Accuracy", test_accuracy, epoch)
+    x_coordinate.append(epoch)
+    y_coordinate.append(train_loss)
 
     # トレーニングのloss,テストのloss,acc,pre,rec,spe,f1を表示
     print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}, Test Loss = {test_loss:.4f}, Test Accuracy = {test_accuracy:.4f}, Test Precision = {test_precision:.4f}, Test Recall = {test_recall:.4f}, Test Specificity = {test_specificity:.4f}, Test F1 Score = {test_f1_score:.4f}")
+
+# グラフを書いてカレントディレクトリに保存
+plt.plot(x_coordinate, y_coordinate)
+plt.savefig("loss")
 
 # モデルを保存する
 torch.save(model.state_dict(), "my_model.pt")
