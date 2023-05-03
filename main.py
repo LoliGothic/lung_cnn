@@ -10,7 +10,6 @@ class MyDataset(torch.utils.data.Dataset):
         self.data = data
         self.targets = targets
 
-    # ここいる???????????
     def __getitem__(self, index):
         x = self.data[index]
         y = self.targets[index]
@@ -62,6 +61,10 @@ def test(model, dataloader, criterion, device):
     running_loss = 0.0
     correct = 0
     total = 0
+    true_positives = 0
+    true_negatives = 0
+    false_positives = 0
+    false_negatives = 0
     with torch.no_grad():
         for i, (inputs, labels) in enumerate(dataloader):
             inputs, labels = inputs.to(device), labels.to(device)
@@ -71,8 +74,20 @@ def test(model, dataloader, criterion, device):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
+
+            # 予測値と正解ラベルから、真陽性、真陰性、偽陽性、偽陰性を計算する
+            true_positives += ((predicted == 1) & (labels == 1)).sum().item()
+            true_negatives += ((predicted == 0) & (labels == 0)).sum().item()
+            false_positives += ((predicted == 1) & (labels == 0)).sum().item()
+            false_negatives += ((predicted == 0) & (labels == 1)).sum().item()
+
     accuracy = correct / total
-    return running_loss / len(dataloader), accuracy
+    precision = true_positives / (true_positives + false_positives)
+    recall = true_positives / (true_positives + false_negatives)
+    specificity = true_negatives / (true_negatives + false_positives)
+    f1_score = 2 * (precision * recall) / (precision + recall)
+
+    return running_loss / len(dataloader), accuracy, precision, recall, specificity, f1_score
 
 # パラメータを設定する
 learning_rate = 0.001
@@ -101,14 +116,15 @@ writer = SummaryWriter()
 # トレーニングを実行する
 for epoch in range(num_epochs):
     train_loss = train(model, train_dataloader, optimizer, criterion, device)
-    test_loss, test_accuracy = test(model, test_dataloader, criterion, device)
+    test_loss, test_accuracy, test_precision, test_recall, test_specificity, test_f1_score = test(model, test_dataloader, criterion, device)
 
     # TensorBoardにlossとaccuracyのログを出す
     writer.add_scalar("Training Loss", train_loss, epoch)
     writer.add_scalar("Testing Loss", test_loss, epoch)
     writer.add_scalar("Testing Accuracy", test_accuracy, epoch)
 
-    print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}, Test Loss = {test_loss:.4f}, Test Accuracy = {test_accuracy:.4f}")
+    # トレーニングのloss,テストのloss,acc,pre,rec,spe,f1を表示
+    print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}, Test Loss = {test_loss:.4f}, Test Accuracy = {test_accuracy:.4f}, Test Precision = {test_precision:.4f}, Test Recall = {test_recall:.4f}, Test Specificity = {test_specificity:.4f}, Test F1 Score = {test_f1_score:.4f}")
 
 # モデルを保存する
 torch.save(model.state_dict(), "my_model.pt")
