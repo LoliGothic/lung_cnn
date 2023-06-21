@@ -9,3 +9,5 @@ services:
     tty: true
     volumes:
       - ./:/src/app
+      - /mnt/e/本データ三善用:/src/app/data
+      - /mnt/e/本ボクセルデータ:/src/app/voxel_data
