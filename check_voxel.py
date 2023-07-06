@@ -4,10 +4,10 @@ import torch
 import pydicom
 from natsort import natsorted # 普通のsortで文字列900,1000をsortすると，1000,900となってしまうため，natsortを使う
 
-test = np.load("./voxel_data979/1715.npy")
-test = torch.tensor(test)
-test = test.float()
-print(test.shape)
+# test = np.load("./voxel_data979/1715.npy")
+# test = torch.tensor(test)
+# test = test.float()
+# print(test.shape)
 
 # targets = []
 # for i in range(10):
@@ -36,3 +36,14 @@ print(test.shape)
 #                     print(dicom.pixel_array.shape)
             
 #             print(patient_path)
+
+data = "./voxel_data"
+
+for d in natsorted(os.listdir(data)):
+    test = np.load(f"{data}/{d}")
+    if test.max() != 1.0:
+        print(test.max())
+        print(d)
+    if test.min() != 0:
+        print(test.min())
+        print(d)
