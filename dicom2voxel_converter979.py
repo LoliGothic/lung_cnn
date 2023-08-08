@@ -24,7 +24,7 @@ for divide_patient_path in natsorted(os.listdir(all_patient_path)):
             # ボクセルデータを作成する
             depth = 979
             # width,height,depth,channelの配列を作る.周りを0パディングするために，値を2づつ大きくしている
-            voxels = np.zeros((512 + 2, 512 + 2, depth + 2, 1), dtype=np.uint8)
+            voxels = np.zeros((512 + 2, 512 + 2, depth + 2, 1), dtype=np.uint16)
 
             # 各スライス画像を処理し、ボクセルデータに変換する
             for z, slice_dicom in enumerate(slice_dicoms):
