@@ -22,9 +22,9 @@ for divide_patient_path in natsorted(os.listdir(all_patient_path)):
                 slice_dicoms.append(dicom)
             
             # ボクセルデータを作成する
-            depth = len(slice_dicoms)
-            # width,height,depth,channelの配列を作る
-            voxels = np.zeros((512, 512, depth, 1), dtype=np.uint16)
+            depth = 979
+            # width,height,depth,channelの配列を作る.周りを0パディングするために，値を2づつ大きくしている
+            voxels = np.zeros((512 + 2, 512 + 2, depth + 2, 1), dtype=np.uint16)
 
             # 各スライス画像を処理し、ボクセルデータに変換する
             for z, slice_dicom in enumerate(slice_dicoms):
@@ -32,16 +32,14 @@ for divide_patient_path in natsorted(os.listdir(all_patient_path)):
                 for x in range(512):
                     for y in range(512):
                         try:
-                            voxels[x][y][z] = slice_dicom_pixel[x][y]
+                            voxels[x + 1][y + 1][z + 1] = slice_dicom_pixel[x][y] # ＋１にすることで，0パディングのところに入れないようにする
                         except IndexError: # 1715だけ画像サイズが(482, 482)だから足りないとこには0を入れてあげる
-                            voxels[x][y][z] = 0
+                            voxels[x + 1][y + 1][z + 1] = 0
 
             # conv3dで使いやすくするために，ボクセルデータを正規化,転置する
-            voxels = voxels / voxels.max()
-
-            # ここからリサイズとかをしていくのでまだ転置はしなくていい？
-            # voxels = voxels.T
+            voxels = voxels / 255
+            voxels = voxels.T
 
             # ボクセルデータをnpyファイルとして保存する
-            np.save(f"./voxel_data/{patient_path}.npy", voxels)
+            np.save(f"./voxel_data979/{patient_path}.npy", voxels)
             print(patient_path)
