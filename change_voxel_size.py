@@ -18,7 +18,10 @@ new_y = np.linspace(0, 511, 30)
 new_z = np.linspace(0, voxel_data.shape[2] - 1, 30)
 
 # 新しいボクセルデータの座標をメッシュグリッドの座標に変換する
-xg, yg, zg = np.meshgrid(new_x, new_y, new_z, indexing='ij')
+xg, yg, zg = np.meshgrid(new_x, new_y, new_z, indexing="ij")
+
+# 0パディングされた32*32*32のボクセルデータを作る
+voxel_data_32 = np.zeros((32, 32, 32, 1), dtype=np.uint16)
 
 # 0パディングされた32*32*32のボクセルデータを作る
 voxel_data_32 = np.zeros((32, 32, 32, 1), dtype=np.uint8)
