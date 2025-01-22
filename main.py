@@ -34,6 +34,7 @@ def train(model, dataloader, optimizer, criterion, device):
     false_negatives = 0
     for i, (inputs, labels) in enumerate(dataloader):
         inputs, labels = inputs.to(device), labels.to(device)
+        print(labels)
         optimizer.zero_grad()
         outputs = model(inputs)
         # print(outputs)
@@ -135,16 +136,19 @@ print(f"device: {device}")
 data = []  # 入力データのdepthは合わせる必要がある
 targets = []
 
-test_data1_path = "./data1"
-test_data2_path = "./data2"
-for testes in natsorted(os.listdir(test_data1_path)):
-    test_data = np.load(f"{test_data1_path}/{testes}")
-    data.append(test_data)
-    targets.append(0)
-for testes in natsorted(os.listdir(test_data2_path)):
-    test_data = np.load(f"{test_data2_path}/{testes}")
-    data.append(test_data)
+true_data_path = "./reprocessing_data/true"
+false_data_path = "./reprocessing_data/false"
+
+for true_data in natsorted(os.listdir(true_data_path)):
+    infiltration = np.load(f"{true_data_path}/{true_data}")
+    data.append(infiltration)
     targets.append(1)
+
+for false_data in natsorted(os.listdir(false_data_path)):
+    not_infiltration = np.load(f"{false_data_path}/{false_data}")
+    data.append(not_infiltration)
+    targets.append(1)
+
 data = np.array(data)
 targets = np.array(targets)
 
@@ -157,7 +161,7 @@ targets = torch.tensor(targets).long()
 dataset = MyDataset(data, targets)
 
 # トレーニングセットとテストセットに分割する
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [len(dataset)-10, 10])
+train_dataset, test_dataset = torch.utils.data.random_split(dataset, [len(dataset)-4, 4])
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
