@@ -23,6 +23,9 @@ xg, yg, zg = np.meshgrid(new_x, new_y, new_z, indexing="ij")
 # 0パディングされた32*32*32のボクセルデータを作る
 voxel_data_32 = np.zeros((32, 32, 32, 1), dtype=np.uint16)
 
+# 0パディングされた32*32*32のボクセルデータを作る
+voxel_data_32 = np.zeros((32, 32, 32, 1), dtype=np.uint8)
+
 # RegularGridInterpolatorを使用して新しいボクセルデータを補間する
 for z in range(8,9):
     for x in range(12,13):

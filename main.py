@@ -6,6 +6,8 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from models.voxnet import VoxNet
+from sklearn.model_selection import KFold
+from torch.utils.data.dataset import Subset
 from natsort import natsorted # 普通のsortで文字列900,1000をsortすると，1000,900となってしまうため，natsortを使う
 
 # データセットを定義する
@@ -128,17 +130,18 @@ def test(model, dataloader, criterion, device):
 # パラメータを設定する
 learning_rate = 0.001
 batch_size = 2 #適当に変えた所
-num_epochs = 10
+num_epochs = 20
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"device: {device}")
 
 # データセットを作成する
-data = []  # 入力データのdepthは合わせる必要がある
+data = []  # 入力データのdepthは合わせる必要がある?
 targets = []
 
 true_data_path = "./reprocessing_data/true"
 false_data_path = "./reprocessing_data/false"
 
+# データをdataとtargetsに入れる
 for true_data in natsorted(os.listdir(true_data_path)):
     infiltration = np.load(f"{true_data_path}/{true_data}")
     data.append(infiltration)
@@ -147,8 +150,9 @@ for true_data in natsorted(os.listdir(true_data_path)):
 for false_data in natsorted(os.listdir(false_data_path)):
     not_infiltration = np.load(f"{false_data_path}/{false_data}")
     data.append(not_infiltration)
-    targets.append(1)
+    targets.append(0)
 
+# npの配列に変換
 data = np.array(data)
 targets = np.array(targets)
 
@@ -176,20 +180,37 @@ train_loss_graph_y = []
 test_accuracy_graph_x = []
 test_accuracy_graph_y = []
 
-# トレーニングを実行する
-for epoch in range(num_epochs):
-    train_loss, train_accuracy, train_precision, train_recall, train_specificity, train_f1_score = train(model, train_dataloader, optimizer, criterion, device)
-    test_loss, test_accuracy, test_precision, test_recall, test_specificity, test_f1_score = test(model, test_dataloader, criterion, device)
+# 交差検証の設定(五分割，シャッフル)
+kf = KFold(n_splits=5, shuffle=True)
 
-    train_loss_graph_x.append(epoch)
-    train_loss_graph_y.append(train_loss)
-    test_accuracy_graph_x.append(epoch)
-    test_accuracy_graph_y.append(test_accuracy)
+for _fold, (train_index, test_index) in enumerate(kf.split(range(len(dataset)))):
+    # モデル、オプティマイザ、損失関数を定義する(リセットする)
+    model = VoxNet().to(device)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = nn.CrossEntropyLoss()
 
-    # トレーニングのloss,テストのloss,acc,pre,rec,spe,f1を表示
-    print(f"Epoch {epoch+1}: Train Acc = {train_accuracy}")
-    print(f"Epoch {epoch+1}: Test Acc = {test_accuracy}")
-    # print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}, Test Loss = {test_loss:.4f}, Test Accuracy = {test_accuracy:.4f}, Test Precision = {test_precision:.4f}, Test Recall = {test_recall:.4f}, Test Specificity = {test_specificity:.4f}, Test F1 Score = {test_f1_score:.4f}")
+    train_dataset = Subset(dataset, train_index)
+    test_dataset = Subset(dataset, test_index)
+
+    train_dataloader = DataLoader(train_dataset, batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size, shuffle=False)
+
+    # トレーニングを実行する
+    for epoch in range(num_epochs):
+        train_loss, train_accuracy, train_precision, train_recall, train_specificity, train_f1_score = train(model, train_dataloader, optimizer, criterion, device)
+        test_loss, test_accuracy, test_precision, test_recall, test_specificity, test_f1_score = test(model, test_dataloader, criterion, device)
+
+        train_loss_graph_x.append(epoch)
+        train_loss_graph_y.append(train_loss)
+        test_accuracy_graph_x.append(epoch)
+        test_accuracy_graph_y.append(test_accuracy)
+
+        # トレーニングのloss,テストのloss,acc,pre,rec,spe,f1を表示
+        # print(f"Epoch {epoch+1}: Train Acc = {train_accuracy}")
+        # print(f"Epoch {epoch+1}: Test Acc = {test_accuracy}")
+        # print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}, Train Accuracy = {train_accuracy:.4f}, Train Precision = {train_precision:.4f}, Train Recall = {train_recall:.4f}, Train Specificity = {train_specificity:.4f}, Train F1 Score = {train_f1_score:.4f}")
+        if epoch == 19:
+            print(f"Epoch {epoch+1}: Test Loss = {test_loss:.4f}, Test Accuracy = {test_accuracy:.4f}, Test Precision = {test_precision:.4f}, Test Recall = {test_recall:.4f}, Test Specificity = {test_specificity:.4f}, Test F1 Score = {test_f1_score:.4f}")
 
 # グラフを書いてカレントディレクトリに保存
 plt.plot(train_loss_graph_x, train_loss_graph_y)
@@ -199,4 +220,4 @@ plt.plot(test_accuracy_graph_x, test_accuracy_graph_y)
 plt.savefig("test_accuracy.png")
 
 # モデルを保存する
-torch.save(model.state_dict(), "voxnet_model.pt")
+# torch.save(model.state_dict(), "voxnet_model.pt")
